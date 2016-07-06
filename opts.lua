@@ -14,6 +14,10 @@ function M.parse(arg)
 
     local opt = cmd:parse(arg or {})
 
+    if opt.dataP then
+        opt.dataP = tonumber(opt.dataP)
+    end
+
     --[[
     if opt.data == '' or not paths.dirp(opt.data) then
         cmd:error('Invalid data path ' .. opt.data)

@@ -10,12 +10,29 @@ function KaggleDR.create(opt, setName)
     assert(paths.dirp(opt.data), 'data folder is not valid'..opt.data)
     assert(paths.filep(labelFile), 'opt.'..setName..'L is not valid'..labelFile)
 
-    local fileName = KaggleDR.saveLabelFile(setName, labelFile, true)
+    local fileName = KaggleDR.saveLabelFile(setName, labelFile, true, opt)
 
     return M.KaggleDR(opt, setName, fileName)
 end
 
-function KaggleDR.saveLabelFile(split, labelFile, headers)
+function KaggleDR.pruneData(allData, percentage)
+    print('in prune data function ', percentage)
+    for dr_level = 0,4 do
+        local size = allData[dr_level]:size(1)
+        local perm = torch.randperm(size):long()
+        local targetSize = math.ceil(size * percentage/100)
+        local indices = torch.linspace(1, targetSize, targetSize):long()
+
+        print('size of ' .. dr_level .. ' is ' .. size)
+
+        allData[dr_level] = allData[dr_level]:index(1, perm)
+        allData[dr_level] = allData[dr_level]:index(1, indices)
+    end
+
+    return allData;
+end
+
+function KaggleDR.saveLabelFile(split, labelFile, headers, opt)
     local imageLabels = torch.DoubleTensor(35126,3)
 
     local skip = headers or true
@@ -45,15 +62,16 @@ function KaggleDR.saveLabelFile(split, labelFile, headers)
 
     for i = 0,4 do
         local selected = indices[imageLabels[{{}, {3}}]:eq(i)]
-        classToImages[''..i] = imageLabels:index(1,selected)
+        classToImages[i] = imageLabels:index(1,selected)
     end
 
-    torch.save(split..'.labels.t7', classToImages)
-    return split..'.labels.t7'
-end
+    if opt.dataP > 0 and opt.dataP < 100 and opt.dataP%1 == 0 then
+        classToImages = KaggleDR.pruneData(classToImages, opt.dataP)
+    end
 
-local function pruneData()
-    print('in prune data function ')
+    local fileName = table.concat({"train", opt.dataP, opt.val, "t7"}, '.');
+    torch.save(fileName, classToImages)
+    return fileName
 end
 
 function KaggleDR:__init(opt, split, fileName)
@@ -62,7 +80,6 @@ function KaggleDR:__init(opt, split, fileName)
     self.labelFile = opt[split..'L']
     self.imageLabels = torch.load(fileName)
 
-    pruneData()
 
     if self.split == 'train' and opt.val then
         print('doing validation')

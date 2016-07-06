@@ -40,3 +40,6 @@ luac.out
 *.hex
 
 *.swp
+
+*.t7
+data/*
