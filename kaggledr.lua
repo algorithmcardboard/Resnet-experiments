@@ -23,9 +23,9 @@ function KaggleDR.pruneData(allData, percentage)
         local targetSize = math.ceil(size * percentage/100)
         local indices = torch.linspace(1, targetSize, targetSize):long()
 
-        print('size of ' .. dr_level .. ' is ' .. size)
+        print('size of ' .. dr_level .. ' is ' .. size .. ' targetSize is ' .. targetSize )
 
-        allData[dr_level] = allData[dr_level]:index(1, perm)
+        allData[dr_level] = allData[dr_level]:index(1, perm) -- shuffle the dataset
         allData[dr_level] = allData[dr_level]:index(1, indices)
     end
 
@@ -74,17 +74,37 @@ function KaggleDR.saveLabelFile(split, labelFile, headers, opt)
     return fileName
 end
 
+function KaggleDR:_train_validation_split(opt)
+    local validationSet = {}
+    local trainingSet = {}
+    if opt.val > 0 and opt.val < 100 and opt.val % 1 == 0 then
+        for dr_level = 0,4 do
+            local size = self.imageLabels[dr_level]:size(1)
+            local perm = torch.randperm(size):long()
+            local targetSize = math.ceil(size * opt.val/100)
+            local indices = torch.linspace(1, targetSize, targetSize):long()
+
+            print('size of ' .. dr_level .. ' is ' .. size .. ' targetSize is ' .. targetSize )
+
+            self.imageLabels[dr_level] = self.imageLabels[dr_level]:index(1, perm) -- shuffle the dataset
+            validationSet[dr_level] = self.imageLabels[dr_level]:index(1, indices)
+
+            local trainIndices = torch.linspace(targetSize + 1, size, size - targetSize):long()
+            trainingSet[dr_level] = self.imageLabels[dr_level]:index(1, trainIndices)
+        end
+    end
+
+    return trainingSet, validationSet
+end
+
 function KaggleDR:__init(opt, split, fileName)
     self.split = split
     self.dir = opt.data
     self.labelFile = opt[split..'L']
     self.imageLabels = torch.load(fileName)
 
-
-    if self.split == 'train' and opt.val then
-        print('doing validation')
-    else
-        print('no validation')
+    if self.split == 'train' then
+        self.data, self.valData = self:_train_validation_split(opt)
     end
 end
 

@@ -18,6 +18,10 @@ function M.parse(arg)
         opt.dataP = tonumber(opt.dataP)
     end
 
+    if opt.val then
+        opt.val = tonumber(opt.val)
+    end
+
     --[[
     if opt.data == '' or not paths.dirp(opt.data) then
         cmd:error('Invalid data path ' .. opt.data)
