@@ -4,7 +4,7 @@ Threads.serialization('threads.sharedserialize')
 local M = {}
 
 local DataLoader = torch.class('eyeart.DataLoader', M)
-local KaggleDR = require 'kaggledr'
+local KaggleDR = require 'datasets/kaggledr'
 
 function DataLoader.create(opt, setNames)
     local loaders = {}
