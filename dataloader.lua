@@ -20,6 +20,39 @@ end
 function M.DataLoader:__init(dataset, opt, setName)
     self.setName = setName
     self.dataset = dataset
+    local manualSeed = opt.manualSeed
+
+    local function init()
+        require('datasets/kaggledr')
+    end
+
+    local function main(idx)
+        if manualSeed ~= 0 then
+            torch.manualSeed(manualSeed + idx)
+        end
+        torch.setnumthreads(1)
+        return 5162
+    end
+
+    local pool, sizes = Threads(opt.nThreads, init, main)
+    self.pool = pool
+    self.__size = size
+    self.batchSize = opt.batchSize
+end
+
+function M.DataLoader:run()
+
+    local pool = self.pool
+
+    local function enqueue()
+
+    end
+
+    local function loop()
+        enqueue()
+    end
+
+    return loop
 end
 
 function M.DataLoader:__tostring()

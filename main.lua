@@ -1,9 +1,6 @@
 require 'torch';
-require 'paths';
 require 'cutorch';
-require 'cunn';
-require 'cudnn';
-require 'optim';
+require 'paths';
 
 torch.setdefaulttensortype('torch.FloatTensor')
 torch.setnumthreads(1)
@@ -15,25 +12,22 @@ local opt = opts.parse(arg)
 
 local models = require 'models/init'
 local DataLoader = require 'dataloader'
+local Trainer = require 'train'
 
 local trainLoader = DataLoader.create(opt, {'train'})
 local model, criterion = models.setup(opt)
 
 print(trainLoader)
 
---[===[
-for epoch = startEpoch, opt.nEpochs do
-    local kFold = trainLoader.getKFold()
-    local valStastistics;
-    for k = 1, kFold do
-        local trainStatistics = trainer:train(epoch, trainLoader:getTrainSet(k))
-        local vs = trainer:val(epoch, trainLoader:getValidationSet(k))
+local trainer = Trainer(model, criterion, opt, optimState)
 
-        -- code to sum/do operations with previous valStastistics and vs
-    end
+for epoch = 1, opt.nEpochs do
+    local trainStatistics = trainer:train(epoch, trainLoader:getTrainSet(k))
+    local vs = trainer:val(epoch, trainLoader:getValidationSet(k))
+
+    -- code to sum/do operations with previous valStastistics and vs
     collectgarbage('count')
 end
---]===]
 
 print("out of comment")
 

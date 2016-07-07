@@ -6,20 +6,24 @@ function M.parse(arg)
     cmd:text('Kaggle Diabetic Retinopathy detection using residual networks')
     cmd:text()
     cmd:text('Options:')
-    cmd:option('-data',       '',         'Path to dataset')
-    cmd:option('-trainL',         '',         'Path to train Labels')
-    cmd:option('-testL',         '',         'Path to test Labels')
-    cmd:option('-val',         '10',         'Percentage to use for validation set')
-    cmd:option('-dataP',         '20',         'Percentage of data to use')
+    cmd:option('-data',             '',             'Path to dataset')
+    cmd:option('-trainL',           '',             'Path to train Labels')
+    cmd:option('-testL',            '',             'Path to test Labels')
+    cmd:option('-val',              10,             'Percentage to use for validation set')
+    cmd:option('-dataP',            20,             'Percentage of data to use')
+    cmd:option('-nEpochs',          300,            'Maximum epochs')
+    cmd:option('-batchSize',        64,             'Batch size for epochs')
+    cmd:option('-nThreads',         4,              'Number of dataloading threads')
+    cmd:option('-manualSeed',       0,              'Manually set RNG seed')
 
     local opt = cmd:parse(arg or {})
 
     if opt.dataP then
-        opt.dataP = tonumber(opt.dataP)
+        -- opt.dataP = tonumber(opt.dataP)
     end
 
     if opt.val then
-        opt.val = tonumber(opt.val)
+        -- opt.val = tonumber(opt.val)
     end
 
     --[[
