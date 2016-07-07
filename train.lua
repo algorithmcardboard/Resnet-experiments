@@ -28,13 +28,17 @@ function Trainer:train(epoch, dataLoader)
         return self.criterion.output, self.gradParams
     end
 
-    local trainSize = dataloader:size()
+    local trainSize = dataLoader:size()
 
     print('=> Training epoch #'.. epoch)
 
     self.model:training()
     for n, sample in dataLoader:run() do
     end
+end
+
+function Trainer:validate(epoch, dataLoader)
+    print('calling validate')
 end
 
 function Trainer:learningRate(epoch)

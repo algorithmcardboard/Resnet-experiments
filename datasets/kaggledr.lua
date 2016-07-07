@@ -4,6 +4,8 @@ local M = {}
 
 local KaggleDR = torch.class('eyeart.KaggleDR', M)
 
+KaggleDR.DR_LEVELS = {0, 1, 2, 3, 4}
+
 function KaggleDR.create(opt, setName)
     local labelFile = opt[setName..'L']
 
@@ -16,14 +18,13 @@ function KaggleDR.create(opt, setName)
 end
 
 function KaggleDR.pruneData(allData, percentage)
-    print('in prune data function ', percentage)
     for dr_level = 0,4 do
         local size = allData[dr_level]:size(1)
         local perm = torch.randperm(size):long()
         local targetSize = math.ceil(size * percentage/100)
         local indices = torch.linspace(1, targetSize, targetSize):long()
 
-        print('size of ' .. dr_level .. ' is ' .. size .. ' targetSize is ' .. targetSize )
+        --print('size of ' .. dr_level .. ' is ' .. size .. ' targetSize is ' .. targetSize )
 
         allData[dr_level] = allData[dr_level]:index(1, perm) -- shuffle the dataset
         allData[dr_level] = allData[dr_level]:index(1, indices)
@@ -69,7 +70,7 @@ function KaggleDR.saveLabelFile(split, labelFile, headers, opt)
         classToImages = KaggleDR.pruneData(classToImages, opt.dataP)
     end
 
-    local fileName = table.concat({"train", opt.dataP, opt.val, "t7"}, '.');
+    local fileName = table.concat({"processed", "train", opt.dataP, opt.val, "t7"}, '.');
     torch.save(fileName, classToImages)
     return fileName
 end
@@ -84,7 +85,7 @@ function KaggleDR:_train_validation_split(opt)
             local targetSize = math.ceil(size * opt.val/100)
             local indices = torch.linspace(1, targetSize, targetSize):long()
 
-            print('size of ' .. dr_level .. ' is ' .. size .. ' targetSize is ' .. targetSize )
+            --print('size of ' .. dr_level .. ' is ' .. size .. ' targetSize is ' .. targetSize )
 
             self.imageLabels[dr_level] = self.imageLabels[dr_level]:index(1, perm) -- shuffle the dataset
             validationSet[dr_level] = self.imageLabels[dr_level]:index(1, indices)
@@ -106,9 +107,18 @@ function KaggleDR:__init(opt, split, fileName)
     if self.split == 'train' then
         self.data, self.valData = self:_train_validation_split(opt)
     end
+    
+    local size = 0;
+    for i, v in ipairs(KaggleDR.DR_LEVELS) do
+        -- print("size of " .. v .. " is " .. self.data[v]:size(1))
+        size = size + self.data[v]:size(1)
+    end
+    self.__size = size
 end
 
 function KaggleDR:size()
+    -- print("in kaggleDR size function ", self.__size)
+    return self.__size
 end
 
 return M.KaggleDR

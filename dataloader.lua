@@ -11,32 +11,32 @@ function DataLoader.create(opt, setNames)
 
     for i, setName in ipairs(setNames) do
         local dataSet = KaggleDR.create(opt, setName)
-        loaders[i] = M.DataLoader(dataset, opt, setName)
+        loaders[i] = M.DataLoader(dataSet, opt, setName)
     end
 
     return table.unpack(loaders)
 end
 
-function M.DataLoader:__init(dataset, opt, setName)
-    self.setName = setName
-    self.dataset = dataset
-    local manualSeed = opt.manualSeed
+function M.DataLoader:__init(dataSet, opt, setName)
 
+    local manualSeed = opt.manualSeed
     local function init()
         require('datasets/kaggledr')
     end
-
     local function main(idx)
         if manualSeed ~= 0 then
             torch.manualSeed(manualSeed + idx)
         end
         torch.setnumthreads(1)
-        return 5162
+        return dataSet:size()
     end
 
     local pool, sizes = Threads(opt.nThreads, init, main)
+    self.setName = setName
+    self.dataSet = dataSet
     self.pool = pool
-    self.__size = size
+    self.__size = sizes[1][1]
+    print("Assigning sizes ", sizes)
     self.batchSize = opt.batchSize
 end
 
@@ -53,6 +53,10 @@ function M.DataLoader:run()
     end
 
     return loop
+end
+
+function M.DataLoader:size()
+    return math.ceil(self.__size/self.batchSize)
 end
 
 function M.DataLoader:__tostring()

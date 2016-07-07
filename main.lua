@@ -22,8 +22,8 @@ print(trainLoader)
 local trainer = Trainer(model, criterion, opt, optimState)
 
 for epoch = 1, opt.nEpochs do
-    local trainStatistics = trainer:train(epoch, trainLoader:getTrainSet(k))
-    local vs = trainer:val(epoch, trainLoader:getValidationSet(k))
+    local trainStatistics = trainer:train(epoch, trainLoader)
+    local vs = trainer:validate(epoch, trainLoader)
 
     -- code to sum/do operations with previous valStastistics and vs
     collectgarbage('count')
