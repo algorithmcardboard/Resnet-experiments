@@ -39,7 +39,6 @@ function M.DataLoader:__init(dataSet, opt)
     self.dataSet = dataSet
     self.pool = pool
     self.__size = sizes[1][1]
-    print("Assigning sizes ", sizes)
     self.batchSize = opt.batchSize
 end
 
