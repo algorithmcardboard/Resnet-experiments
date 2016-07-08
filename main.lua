@@ -14,10 +14,11 @@ local models = require 'models/init'
 local DataLoader = require 'dataloader'
 local Trainer = require 'train'
 
-local trainLoader = DataLoader.create(opt, {'train'})
+local valLoader, trainLoader = DataLoader.create(opt, {'train'})
 local model, criterion = models.setup(opt)
 
-print(trainLoader)
+print('trainLoader ', trainLoader)
+print('valLoader ', valLoader)
 
 local trainer = Trainer(model, criterion, opt, optimState)
 

@@ -5,19 +5,22 @@ local M = {}
 
 local DataLoader = torch.class('eyeart.DataLoader', M)
 local KaggleDR = require 'datasets/kaggledr'
+local script = paths.dofile('datasets/kaggledr-gen.lua')
 
 function DataLoader.create(opt, setNames)
     local loaders = {}
 
     for i, setName in ipairs(setNames) do
-        local dataSet = KaggleDR.create(opt, setName)
-        loaders[i] = M.DataLoader(dataSet, opt, setName)
+        local dataSets = script.exec(opt, setName)
+        for i, dataSet in ipairs(dataSets) do
+            loaders[i] = M.DataLoader(dataSet, opt)
+        end
     end
 
     return table.unpack(loaders)
 end
 
-function M.DataLoader:__init(dataSet, opt, setName)
+function M.DataLoader:__init(dataSet, opt)
 
     local manualSeed = opt.manualSeed
     local function init()
@@ -32,7 +35,7 @@ function M.DataLoader:__init(dataSet, opt, setName)
     end
 
     local pool, sizes = Threads(opt.nThreads, init, main)
-    self.setName = setName
+    self.setName = dataSet:getSplitName()
     self.dataSet = dataSet
     self.pool = pool
     self.__size = sizes[1][1]
@@ -41,15 +44,16 @@ function M.DataLoader:__init(dataSet, opt, setName)
 end
 
 function M.DataLoader:run()
-
     local pool = self.pool
+    local size, batchSize = self.__size, self.batchSize
+    local perm = torch.randperm(size)
 
     local function enqueue()
-
     end
 
     local function loop()
         enqueue()
+        return 1, 2
     end
 
     return loop
