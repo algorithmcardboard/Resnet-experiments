@@ -49,13 +49,15 @@ local function _train_validation_split(imageLabels, valPercent)
 end
 
 local function flatten(classToImages, size)
-    local result = torch.Tensor(size, 3)
+    local result = torch.zeros(size, 3)
     local startP = 1
-    local size = 0 
+    local classSize = 0 
+    print('total size is ', size)
     for i, v in ipairs(_DR_LEVELS) do
-        size = classToImages[v]:size(1)
-        result[{{startP, startP + size - 1}}] = classToImages[v]
-        startP = startP + size 
+        classSize = classToImages[v]:size(1)
+        print('flattenning ', startP, startP + classSize -1, classSize)
+        result[{{startP, startP + classSize- 1}}] = classToImages[v]
+        startP = startP + classSize
     end
     return result
 end
@@ -63,22 +65,27 @@ end
 local function _saveLabelFile(split, labelFile, headers, opt)
 
     local skip = headers or true
-    local count = 1
 
     local COLS = 0
     local ROWS = 0
+    local unavailable_images = {}
 
     for line in io.lines(labelFile) do
         if ROWS == 0 then
             COLS = #line:split(',') + 1 -- adding one for left/right eye position
         end
+
         ROWS = ROWS + 1
     end
+    print(#unavailable_images, unavailable_images)
     if headers then
         ROWS = ROWS - 1
     end
 
-    local imageLabels = torch.DoubleTensor(ROWS,COLS)
+    local imageLabels = torch.zeros(ROWS,COLS)
+    local count = 1
+    skip = headers or true
+    print('skip is ', skip)
 
     for line in io.lines(labelFile) do
         if not skip then
@@ -88,14 +95,21 @@ local function _saveLabelFile(split, labelFile, headers, opt)
             if pos == "left" then
                 pos_int = 1
             end
-
-            imageLabels[count][1] = image
-            imageLabels[count][2] = pos_int
-            imageLabels[count][3] = dr_level
-            count = count + 1
+            local fileName = opt.data ..'/'.. image..'_'..pos..'.jpg' 
+            if paths.filep(fileName) then
+                imageLabels[count][1] = image
+                imageLabels[count][2] = pos_int
+                imageLabels[count][3] = dr_level
+                count = count + 1
+            end
         end
         skip = false
     end
+
+    local indices = torch.linspace(1, imageLabels:size(1), imageLabels:size(1))
+    imageLabels = imageLabels:index(1, indices[imageLabels[{{}, {1}}]:ne(0)]:long())
+
+    torch.save('imageLabels.t7', imageLabels)
 
     local perm = torch.randperm(imageLabels:size(1))
     imageLabels = imageLabels:index(1, perm:long())
@@ -110,7 +124,7 @@ local function _saveLabelFile(split, labelFile, headers, opt)
         classToImages[i] = imageLabels:index(1,selected)
     end
 
-    if opt.dataP > 0 and opt.dataP < 100 and opt.dataP%1 == 0 then
+    if opt.dataP > 0 and opt.dataP <= 100 and opt.dataP%1 == 0 then
         classToImages, dataSize = _pruneData(classToImages, opt.dataP)
     end
 
@@ -127,8 +141,8 @@ local function _saveLabelFile(split, labelFile, headers, opt)
     info[split]['size'] = dataSize
     info[split]['data'] = flatten(classToImages, dataSize)
 
-    -- local fileName = table.concat({"processed", "train", opt.dataP, opt.val, "t7"}, '.');
-    -- torch.save(fileName, classToImages)
+    local fileName = table.concat({"processed", split, opt.dataP, opt.val, "t7"}, '.');
+    torch.save(fileName, info)
     return info 
 end
 
@@ -148,6 +162,5 @@ function M.exec(opt, setName)
 
     return dataSets
 end
-
 
 return M

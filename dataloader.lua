@@ -20,7 +20,7 @@ function DataLoader.create(opt, setNames)
     return table.unpack(loaders)
 end
 
-function M.DataLoader:__init(dataSet, opt)
+function M.DataLoader:__init(data, opt)
 
     local manualSeed = opt.manualSeed
     local function init()
@@ -31,13 +31,14 @@ function M.DataLoader:__init(dataSet, opt)
             torch.manualSeed(manualSeed + idx)
         end
         torch.setnumthreads(1)
+        dataSet = data
         return dataSet:size()
     end
 
     local pool, sizes = Threads(opt.nThreads, init, main)
-    self.setName = dataSet:getSplitName()
-    self.dataSet = dataSet
+    self.setName = data:getSplitName()
     self.pool = pool
+    self.dataSet = data
     self.__size = sizes[1][1]
     self.batchSize = opt.batchSize
 end
@@ -47,12 +48,54 @@ function M.DataLoader:run()
     local size, batchSize = self.__size, self.batchSize
     local perm = torch.randperm(size)
 
+    local idx, sample = 1, nil
+
     local function enqueue()
+        while idx <= size and pool:acceptsjob() do
+            local indices = perm:narrow(1, idx, math.min(batchSize, size - idx + 1))
+            pool:addjob(
+                function(indices)
+                    local sz = indices:size(1)
+                    local batch, imageSize
+                    local target = torch.IntTensor(sz)
+                    for i, idx in ipairs(indices:totable()) do
+                        local sample = dataSet:get(idx)
+                        local input = dataSet:preprocess(sample.input)
+                        if not batch then
+                            imageSize = input:size():totable()
+                            batch = torch.FloatTensor(sz, table.unpack(imageSize))
+                        end
+                        batch[i]:copy(input)
+                        target[i] = sample.target
+                    end
+                    collectgarbage()
+                    return {
+                        input = batch,
+                        target = target
+                    }
+                end,
+                function(result)
+                    sample = result
+                end,
+                indices
+            )
+            idx = idx + batchSize
+        end
     end
 
+    local n = 0
     local function loop()
         enqueue()
-        return 1, 2
+        if not pool:hasjob() then
+            return nil
+        end
+        pool:dojob()
+        if  pool:haserror() then
+            pool:synchronize()
+        end
+        enqueue()
+        n = n+1
+        return n, sample
     end
 
     return loop

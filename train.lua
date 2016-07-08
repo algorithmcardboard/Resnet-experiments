@@ -34,7 +34,7 @@ function Trainer:train(epoch, dataLoader)
 
     self.model:training()
     for n, sample in dataLoader:run() do
-        print('n is ', n, 'sample is ', sample)
+        -- print('n is ', n, 'sample is ', sample)
     end
 end
 
