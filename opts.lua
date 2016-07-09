@@ -17,6 +17,8 @@ function M.parse(arg)
     cmd:option('-manualSeed',       0,              'Manually set RNG seed')
     cmd:option('-depth',            18,             'Depth of model')
     cmd:option('-LR',               0.1,            'initial learning rate')
+    cmd:option('-momentum',         0.9,            'momentum')
+    cmd:option('-weightDecay',      1e-4,           'weight decay')
 
     local opt = cmd:parse(arg or {})
 

@@ -52,10 +52,8 @@ local function flatten(classToImages, size)
     local result = torch.zeros(size, 3)
     local startP = 1
     local classSize = 0 
-    print('total size is ', size)
     for i, v in ipairs(_DR_LEVELS) do
         classSize = classToImages[v]:size(1)
-        print('flattenning ', startP, startP + classSize -1, classSize)
         result[{{startP, startP + classSize- 1}}] = classToImages[v]
         startP = startP + classSize
     end
@@ -77,7 +75,6 @@ local function _saveLabelFile(split, labelFile, headers, opt)
 
         ROWS = ROWS + 1
     end
-    print(#unavailable_images, unavailable_images)
     if headers then
         ROWS = ROWS - 1
     end
@@ -85,7 +82,6 @@ local function _saveLabelFile(split, labelFile, headers, opt)
     local imageLabels = torch.zeros(ROWS,COLS)
     local count = 1
     skip = headers or true
-    print('skip is ', skip)
 
     for line in io.lines(labelFile) do
         if not skip then

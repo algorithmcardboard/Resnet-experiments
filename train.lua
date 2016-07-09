@@ -8,10 +8,10 @@ function Trainer:__init(model, criterion, opt, optimState)
     self.criterion = criterion
     self.optimState = optimState or {
         learningRate = opt.LR,
-        learningRateDecay = 0.01,
+        learningRateDecay = 0.0,
         momentum = opt.momentum,
         nesterov = true,
-        dampning = 0.0,
+        dampening = 0.0,
         weightDecay = opt.weightDecay
     }
     self.opt = opt
@@ -34,11 +34,24 @@ function Trainer:train(epoch, dataLoader)
 
     self.model:training()
     for n, sample in dataLoader:run() do
+
         local dataTime = dataTimer:time().real
+
         self:copyInputs(sample)
 
         local output = self.model:forward(self.input):float()
         local loss = self.criterion:forward(self.model.output, self.target)
+
+        self.model:zeroGradParameters()
+        self.criterion:backward(self.model.output, self.target)
+        self.model:backward(self.input, self.criterion.gradInput)
+
+        optim.sgd(feval, self.params, self.optimState)
+
+        assert(self.params:storage() == self.model:parameters()[1]:storage())
+
+        timer:reset()
+        dataTimer:reset()
 
     end
 end
