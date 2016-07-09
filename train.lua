@@ -48,6 +48,8 @@ function Trainer:train(epoch, dataLoader)
 
         optim.sgd(feval, self.params, self.optimState)
 
+        self:computeScore(output, sample.target)
+
         assert(self.params:storage() == self.model:parameters()[1]:storage())
 
         timer:reset()
@@ -58,6 +60,15 @@ end
 
 function Trainer:validate(epoch, dataLoader)
     print('calling validate')
+end
+
+function Trainer:computeScore(output, target)
+    print(output)
+    assert(output:size(1) == 65, "error")
+    print(output:size())
+    print(target:size())
+    local batchSize = output:size(1)
+    local _, predictions = output:float():sort(2, true)
 end
 
 function Trainer:learningRate(epoch)
