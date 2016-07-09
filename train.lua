@@ -34,7 +34,12 @@ function Trainer:train(epoch, dataLoader)
 
     self.model:training()
     for n, sample in dataLoader:run() do
-        -- print('n is ', n, 'sample is ', sample)
+        local dataTime = dataTimer:time().real
+        self:copyInputs(sample)
+
+        local output = self.model:forward(self.input):float()
+        local loss = self.criterion:forward(self.model.output, self.target)
+
     end
 end
 
@@ -46,5 +51,16 @@ function Trainer:learningRate(epoch)
     local decay = math.floor((epoch - 1)/30)
     return self.opt.LR * math.pow(0.1, decay)
 end
+
+function Trainer:copyInputs(sample)
+   -- Copies the input to a CUDA tensor, if using 1 GPU, or to pinned memory,
+   -- if using DataParallelTable. The target is always copied to a CUDA tensor
+   self.input = self.input or torch.CudaTensor()
+   self.target = self.target or torch.CudaTensor()
+
+   self.input:resize(sample.input:size()):copy(sample.input)
+   self.target:resize(sample.target:size()):copy(sample.target)
+end
+
 
 return M.Trainer

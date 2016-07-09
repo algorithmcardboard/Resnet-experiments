@@ -76,38 +76,38 @@ local function createModel(opt)
     local function layer(block, features, count, stride)
         local s = nn.Sequential()
         for i=1,count do
-         s:add(block(features, i == 1 and stride or 1))
+            s:add(block(features, i == 1 and stride or 1))
         end
         return s
     end
 
     local model = nn.Sequential()
-      local cfg = {
-         [18]  = {{2, 2, 2, 2}, 512, basicblock},
-         [34]  = {{3, 4, 6, 3}, 512, basicblock},
-         [50]  = {{3, 4, 6, 3}, 2048, bottleneck},
-         [101] = {{3, 4, 23, 3}, 2048, bottleneck},
-         [152] = {{3, 8, 36, 3}, 2048, bottleneck},
-      }
+    local cfg = {
+        [18]  = {{2, 2, 2, 2}, 512, basicblock},
+        [34]  = {{3, 4, 6, 3}, 512, basicblock},
+        [50]  = {{3, 4, 6, 3}, 2048, bottleneck},
+        [101] = {{3, 4, 23, 3}, 2048, bottleneck},
+        [152] = {{3, 8, 36, 3}, 2048, bottleneck},
+    }
 
-      assert(cfg[depth], 'Invalid depth: ' .. tostring(depth))
-      local def, nFeatures, block = table.unpack(cfg[depth])
-      iChannels = 64
+    assert(cfg[depth], 'Invalid depth: ' .. tostring(depth))
+    local def, nFeatures, block = table.unpack(cfg[depth])
+    iChannels = 64
 
-      print(' | ResNet-' .. depth .. ' Kaggle DR')
+    print(' | ResNet-' .. depth .. ' Kaggle DR')
 
-      -- The ResNet ImageNet model
-      model:add(Convolution(3,64,7,7,2,2,3,3))
-      model:add(SBatchNorm(64))
-      model:add(ReLU(true))
-      model:add(Max(3,3,2,2,1,1))
-      model:add(layer(block, 64, def[1]))
-      model:add(layer(block, 128, def[2], 2))
-      model:add(layer(block, 256, def[3], 2))
-      model:add(layer(block, 512, def[4], 2))
-      model:add(Avg(7, 7, 1, 1))
-      model:add(nn.View(nFeatures):setNumInputDims(3))
-      model:add(nn.Linear(nFeatures, 1000))
+    -- The ResNet ImageNet model
+    model:add(Convolution(3,64,7,7,2,2,3,3))
+    model:add(SBatchNorm(64))
+    model:add(ReLU(true))
+    model:add(Max(3,3,2,2,1,1))
+    model:add(layer(block, 64, def[1]))
+    model:add(layer(block, 128, def[2], 2))
+    model:add(layer(block, 256, def[3], 2))
+    model:add(layer(block, 512, def[4], 2))
+    model:add(Avg(7, 7, 1, 1))
+    model:add(nn.View(nFeatures):setNumInputDims(3))
+    model:add(nn.Linear(nFeatures, 1000))
 
 
     local function ConvInit(name)
@@ -143,9 +143,9 @@ local function createModel(opt)
 
     if opt.cudnn == 'deterministic' then
         model:apply(function(m)
-        if m.setMode then 
-            m:setMode(1,1,1) 
-        end
+            if m.setMode then 
+                m:setMode(1,1,1) 
+            end
         end)
     end
 

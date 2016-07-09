@@ -32,7 +32,7 @@ function KaggleDR:size()
 end
 
 function KaggleDR:preprocess(img)
-    return img
+    return image.scale(img, 224, 224)
 end
 
 function KaggleDR:getSplitName()
