@@ -23,6 +23,8 @@ function Trainer:train(epoch, dataLoader)
 
     local timer = torch.Timer()
     local dataTimer = torch.Timer()
+    local N = 0
+    local mean_sq_sum, loss_sum = 0.0, 0.0
 
     local function feval()
         return self.criterion.output, self.gradParams
@@ -48,27 +50,58 @@ function Trainer:train(epoch, dataLoader)
 
         optim.sgd(feval, self.params, self.optimState)
 
-        self:computeScore(output, sample.target)
+        local mean_sq_err = self:computeScore(output, sample.target)
+
+        mean_sq_sum = mean_sq_sum + mean_sq_err
+        loss_sum = loss_sum + loss
+
+        N = N + 1
 
         assert(self.params:storage() == self.model:parameters()[1]:storage())
 
         timer:reset()
         dataTimer:reset()
-
     end
+    return loss_sum/N, mean_sq_sum/N
 end
 
 function Trainer:validate(epoch, dataLoader)
-    print('calling validate')
+
+    local timer = torch.Timer()
+    local dataTimer = torch.Timer()
+    local size = dataLoader:size()
+
+    local N = 0
+    local mean_sq_sum, loss_sum = 0.0, 0.0
+
+    self.model:evaluate()
+    for n, sample in dataLoader:run() do
+        local dataTime = dataTimer:time().real
+        self:copyInputs(sample)
+
+        local output = self.model:forward(self.input):float()
+        local loss = self.criterion:forward(self.model.output, self.target)
+        
+        local mean_sq_err = self:computeScore(output, sample.target)
+
+        mean_sq_sum = mean_sq_sum + mean_sq_err
+        loss_sum = loss_sum + loss
+
+        N = N+1
+    end
+    return loss_sum/N, mean_sq_sum/N
 end
 
 function Trainer:computeScore(output, target)
-    print(output)
-    assert(output:size(1) == 65, "error")
-    print(output:size())
-    print(target:size())
+    -- print(output)
     local batchSize = output:size(1)
     local _, predictions = output:float():sort(2, true)
+
+    -- local correct = predictions:eq(target:add(1):long():view(batchSize, 1):expandAs(output))
+
+    local mean_square  = torch.pow((predictions:narrow(2,1,1):double() - target:view(batchSize, 1):double()), 2):sum()
+
+    return mean_square / batchSize
 end
 
 function Trainer:learningRate(epoch)

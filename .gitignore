@@ -43,3 +43,5 @@ luac.out
 
 *.t7
 data/*
+
+logs/
