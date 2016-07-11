@@ -1,7 +1,7 @@
 require 'torch';
 require 'cutorch';
-require 'paths';
 require 'optim'
+require 'os'
 
 torch.setdefaulttensortype('torch.FloatTensor')
 torch.setnumthreads(1)
@@ -11,7 +11,11 @@ cutorch.manualSeedAll(0)
 local opts = require 'opts'
 local opt = opts.parse(arg)
 
-local logger = optim.Logger(opt.logDir .. '/resnet.log')
+local dateT = os.date('*t')
+local logFile = opt.logDir .. '/resnet_' .. dateT.year .. dateT.month .. dateT.day .. '_' .. dateT.hour .. dateT.min .. dateT.sec .. '.log'
+print('logFile is ', logFile)
+
+local logger = optim.Logger(logFile)
 logger:setNames{'train_loss', 'train_mse', 'val_loss', 'val_mse'}
 
 local models = require 'models/init'
