@@ -61,6 +61,7 @@ function Trainer:train(epoch, dataLoader)
 
         timer:reset()
         dataTimer:reset()
+        xlua.progress(n, trainSize)
     end
     return loss_sum/N, mean_sq_sum/N
 end
