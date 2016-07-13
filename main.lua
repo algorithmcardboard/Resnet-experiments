@@ -14,7 +14,6 @@ local opt = opts.parse(arg)
 local dateT = os.date('*t')
 
 local dateStr = dateT.year .. dateT.month .. dateT.day .. '_' .. dateT.hour .. dateT.min .. dateT.sec
-print('logFile is ', logFile)
 
 local logger = optim.Logger(opt.logDir .. '/resnet_' .. dateStr .. '.log')
 logger:setNames{'train_loss', 'train_mse', 'val_loss', 'val_mse'}
@@ -27,8 +26,10 @@ local models = require 'models/init'
 local DataLoader = require 'dataloader'
 local Trainer = require 'train'
 
-local valLoader, trainLoader = DataLoader.create(opt, {'train'})
 local model, criterion = models.setup(opt)
+torch.save('model.t7', model)
+
+local valLoader, trainLoader = DataLoader.create(opt, {'train'})
 
 print('trainLoader ', trainLoader)
 print('valLoader ', valLoader)

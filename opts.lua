@@ -10,7 +10,7 @@ function M.parse(arg)
     cmd:option('-trainL',           '',             'Path to train Labels')
     cmd:option('-testL',            '',             'Path to test Labels')
     cmd:option('-val',              10,             'Percentage to use for validation set')
-    cmd:option('-dataP',            20,             'Percentage of data to use')
+    cmd:option('-dataP',            30,             'Percentage of data to use')
     cmd:option('-nEpochs',          300,            'Maximum epochs')
     cmd:option('-batchSize',        64,             'Batch size for epochs')
     cmd:option('-nThreads',         6,              'Number of dataloading threads')
@@ -22,6 +22,10 @@ function M.parse(arg)
     cmd:option('-logDir',           'logs',         'log directory')
 
     local opt = cmd:parse(arg or {})
+
+    if opt.dataP < 30 or opt.dataP > 100 then
+        cmd:error('Invalid dataP value ' .. opt.dataP)
+    end
 
     if opt.data == '' or not paths.dirp(opt.data) then
         cmd:error('Invalid data path ' .. opt.data)
