@@ -198,6 +198,14 @@ end
 local function _flatten(imageLabels)
     local left_dr = imageLabels:index(2, torch.LongTensor({1, 2}))
     local right_dr = imageLabels:index(2, torch.LongTensor({1, 3}))
+
+    right_dr = torch.cat(right_dr, torch.ones(right_dr:size(1)):reshape(right_dr:size(1), 1), 2)
+    right_dr = right_dr:index(2, torch.LongTensor({1,3,2}))
+
+    left_dr = torch.cat(left_dr, torch.zeros(left_dr:size(1)):reshape(left_dr:size(1), 1), 2)
+    left_dr = left_dr:index(2, torch.LongTensor({1,3,2}))
+
+
     return torch.cat(left_dr, right_dr, 1)
 end
 
