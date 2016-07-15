@@ -97,33 +97,55 @@ local function _pruneData(imageLabels, classDistribution, dataPercentage)
 
     assert(unSymmetricEyes[{{}, {2}}]:eq(unSymmetricEyes[{{}, {3}}]):sum() == 0, 'Not all unSymmetric eyes')
 
-    local resultSet;
+    local toTruncate = {};
+
+    print('dataPercentage is ', dataPercentage)
 
     for i, v in pairs(classDistribution) do
         local totalSamples, requiredSamples = v, math.ceil(v*dataPercentage*0.01)
+        print(i, totalSamples, requiredSamples)
 
         local available = unSymmetricEyes[{{}, {2}}]:eq(i):sum() + unSymmetricEyes[{{}, {3}}]:eq(i):sum()
 
-        --[[--
-        local l_eq_val, r_eq_val = unSymmetricEyes[{{}, {2}}]:eq(i), unSymmetricEyes[{{}, {3}}]:eq(i)
-        local unSymIndices = l_eq_val + r_eq_val
-        unSymIndices = unSymIndices:reshape(unSymIndices:size(1))
-
-        assert(unSymIndices:eq(2):sum() == 0, 'Unsymmetric eyes not in dataset')
-
-        local indices = torch.linspace(1, unSymmetricEyes:size(1), unSymmetricEyes:size(1)):long()
-        print('i is ', i, unSymIndices:sum())
-
-        if resultSet == nil then
-            resultSet = unSymmetricEyes:index(1, indices[unSymIndices])
-        else
-            resultSet = torch.cat({resultSet, unSymmetricEyes:index(1, indices[unSymIndices])}, 1)
+        if available > requiredSamples then
+            toTruncate[i] = available - requiredSamples
         end
+    end
 
-        unSymIndices = unSymIndices:ne(1)
-        unSymmetricEyes = unSymmetricEyes:index(1, indices[unSymIndices])
-        print(unSymmetricEyes:size())
-        --]]--
+    print('toTruncate is ', toTruncate)
+
+    for i, v in pairs(toTruncate) do
+        print('in toTruncate loop', v, math.ceil(classDistribution[i] * dataPercentage * 0.01))
+        if v > 0 then
+            print('Truncating for class ', i)
+
+            local l_eq_val, r_eq_val = unSymmetricEyes[{{}, {2}}]:eq(i), unSymmetricEyes[{{}, {3}}]:eq(i)
+            local unSymIndices = (l_eq_val + r_eq_val):reshape(unSymmetricEyes:size(1))
+
+            print('total available in class '.. i .. ' ' .. unSymIndices:sum())
+            assert(unSymIndices:eq(2):sum() == 0, 'Unsymmetric eyes not in dataset')
+            assert(unSymIndices:sum() == (l_eq_val:sum() + r_eq_val:sum()), 'Some problem with unsymmetric eyes')
+
+            local indices = torch.linspace(1, unSymmetricEyes:size(1), unSymmetricEyes:size(1)):long()
+
+            local length = unSymIndices:sum()
+            indices = (indices[unSymIndices])[{{1, length - v}}]
+
+            print('before sum is ', unSymIndices:sum())
+            unSymIndices:indexFill(1, indices, 0)
+            print('after sum is ', unSymIndices:sum())
+
+            unSymIndices = unSymIndices:ne(1)
+            print(unSymIndices:sum(), unSymmetricEyes:size(1), unSymIndices:size(1))
+
+            assert(unSymIndices:size(1) == unSymmetricEyes:size(1), 'unequal sizes')
+
+
+            indices = torch.linspace(1, unSymmetricEyes:size(1), unSymmetricEyes:size(1)):long()
+            unSymmetricEyes = unSymmetricEyes:index(1, indices[unSymIndices])
+            print('unSymmetricEyes size is ')
+            print(unSymmetricEyes:size())
+        end
     end
 
     return imageLabels

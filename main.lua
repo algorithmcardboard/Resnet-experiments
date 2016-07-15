@@ -27,7 +27,6 @@ local DataLoader = require 'dataloader'
 local Trainer = require 'train'
 
 local model, criterion = models.setup(opt)
-torch.save('model.t7', model)
 
 local valLoader, trainLoader = DataLoader.create(opt, {'train'})
 
