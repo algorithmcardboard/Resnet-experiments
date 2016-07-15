@@ -1,9 +1,9 @@
 require 'torch';
 require 'cutorch';
-require 'optim'
-require 'os'
+require 'optim';
+require 'os';
 
-torch.setdefaulttensortype('torch.FloatTensor')
+-- torch.setdefaulttensortype('torch.FloatTensor')
 torch.setnumthreads(1)
 torch.manualSeed(0)
 cutorch.manualSeedAll(0)

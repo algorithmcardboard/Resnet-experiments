@@ -4,73 +4,15 @@ M = {}
 
 local _DR_LEVELS = {0, 1, 2, 3, 4}
 
-local function _pruneData(allData, percentage)
-    local dataSize = 0
-    for dr_level = 0,4 do
-        local size = allData[dr_level]:size(1)
-        local perm = torch.randperm(size):long()
-        local targetSize = math.ceil(size * percentage/100)
-        local indices = torch.linspace(1, targetSize, targetSize):long()
-
-        dataSize = dataSize + targetSize
-
-        allData[dr_level] = allData[dr_level]:index(1, perm) -- shuffle the dataSet
-        allData[dr_level] = allData[dr_level]:index(1, indices)
-    end
-
-    return allData, dataSize;
-end
-
-local function _train_validation_split(imageLabels, valPercent)
-    local validationSet = {}
-    local trainingSet = {}
-    local trainingSize = 0
-    local validationSize = 0
-    local totalSize  = 0
-    for dr_level = 0,4 do
-        local size = imageLabels[dr_level]:size(1)
-        local perm = torch.randperm(size):long()
-        local targetSize = math.ceil(size * valPercent/100)
-        local indices = torch.linspace(1, targetSize, targetSize):long()
-
-        totalSize = totalSize + size
-        validationSize = validationSize + targetSize
-
-        imageLabels[dr_level] = imageLabels[dr_level]:index(1, perm) -- shuffle the dataSet
-        validationSet[dr_level] = imageLabels[dr_level]:index(1, indices)
-
-        local trainIndices = torch.linspace(targetSize + 1, size, size - targetSize):long()
-        trainingSet[dr_level] = imageLabels[dr_level]:index(1, trainIndices)
-    end
-
-    trainingSize = totalSize - validationSize
-
-    return trainingSet, trainingSize, validationSet, validationSize
-end
-
-local function flatten(classToImages, size)
-    local result = torch.zeros(size, 3)
-    local startP = 1
-    local classSize = 0 
-    for i, v in ipairs(_DR_LEVELS) do
-        classSize = classToImages[v]:size(1)
-        result[{{startP, startP + classSize- 1}}] = classToImages[v]
-        startP = startP + classSize
-    end
-    return result
-end
-
-local function _saveLabelFile(split, labelFile, headers, opt)
+local function _getNumRowsColsFromCSV(labelFile, headers)
 
     local skip = headers or true
-
     local COLS = 0
     local ROWS = 0
-    local unavailable_images = {}
 
     for line in io.lines(labelFile) do
         if ROWS == 0 then
-            COLS = #line:split(',') + 1 -- adding one for left/right eye position
+            COLS = #line:split(',')
         end
 
         ROWS = ROWS + 1
@@ -79,37 +21,134 @@ local function _saveLabelFile(split, labelFile, headers, opt)
         ROWS = ROWS - 1
     end
 
-    local imageLabels = torch.zeros(ROWS,COLS)
-    local count = 1
+    ROWS = ROWS / 2 -- we are going to go by encounters
+    COLS = COLS + 4 - 1 -- one for left/right image present.  Another for left dr and right dr 
+
+    return ROWS, COLS
+end
+
+local function _readCSVToTensor(labelFile, headers, dataDir)
+
+    local ROWS, COLS = _getNumRowsColsFromCSV(labelFile, headers)
+    local imageLabels = torch.zeros(ROWS,COLS):double()
+
+    local encounter_ids, enc_index = {}, 1
     skip = headers or true
 
     for line in io.lines(labelFile) do
         if not skip then
             local image, pos, dr_level = line:match("(%d*)_(%a*),(%d*)")
+            image = tonumber(image)
 
             pos_int = 2
             if pos == "left" then
                 pos_int = 1
             end
-            local fileName = opt.data ..'/'.. image..'_'..pos..'.jpg' 
-            if paths.filep(fileName) then
-                imageLabels[count][1] = image
-                imageLabels[count][2] = pos_int
-                imageLabels[count][3] = dr_level
-                count = count + 1
+
+            if encounter_ids[image] ==  nil then
+                encounter_ids[image] = enc_index
+                enc_index = enc_index + 1
             end
+
+            local enc_id = encounter_ids[image]
+            local file_present = 0 
+
+            local fileName = dataDir ..'/'.. image..'_'..pos..'.jpg' 
+            if paths.filep(fileName) then
+                file_present = 1
+            end
+
+            if pos_int == 1 then
+                image_bool = 2
+                dr_pos = 4
+            else
+                image_bool = 3
+                dr_pos = 5
+            end
+
+            -- encounter_id, left_present, right_present, left_dr, right_dr
+            imageLabels[enc_id][1] = image
+            imageLabels[enc_id][image_bool] = file_present
+            imageLabels[enc_id][dr_pos] = dr_level
         end
         skip = false
     end
 
-    local indices = torch.linspace(1, imageLabels:size(1), imageLabels:size(1))
-    imageLabels = imageLabels:index(1, indices[imageLabels[{{}, {1}}]:ne(0)]:long())
+    local indices = torch.linspace(1, imageLabels:size(1), imageLabels:size(1)):long()
+    imageLabels = imageLabels:index(1, indices[imageLabels[{{}, {2}}]:ne(0)]:long())
+
+    indices = torch.linspace(1, imageLabels:size(1), imageLabels:size(1)):long()
+    imageLabels = imageLabels:index(1, indices[imageLabels[{{}, {3}}]:ne(0)]:long())
+
+    assert(imageLabels:size(1) - imageLabels[{{}, {2}}]:sum() == 0, 'All absetnt left files are not removed')
+    assert(imageLabels:size(1) - imageLabels[{{}, {3}}]:sum() == 0, 'All absetnt right files are not removed')
+
+    imageLabels = imageLabels:index(2, torch.LongTensor({1, 4, 5})):double()
 
     torch.save('imageLabels.t7', imageLabels)
+    return imageLabels
+end
 
-    local perm = torch.randperm(imageLabels:size(1))
-    imageLabels = imageLabels:index(1, perm:long())
-    
+
+local function _pruneData(imageLabels, classDistribution, dataPercentage)
+
+    local indices = torch.linspace(1, imageLabels:size(1), imageLabels:size(1)):long()
+    local unSymmetricEyes = imageLabels:index(1, indices[imageLabels[{{}, {2}}]:ne(imageLabels[{{}, {3}}])])
+
+    assert(unSymmetricEyes[{{}, {2}}]:eq(unSymmetricEyes[{{}, {3}}]):sum() == 0, 'Not all unSymmetric eyes')
+
+    local resultSet;
+
+    for i, v in pairs(classDistribution) do
+        local totalSamples, requiredSamples = v, math.ceil(v*dataPercentage*0.01)
+
+        local available = unSymmetricEyes[{{}, {2}}]:eq(i):sum() + unSymmetricEyes[{{}, {3}}]:eq(i):sum()
+
+        --[[--
+        local l_eq_val, r_eq_val = unSymmetricEyes[{{}, {2}}]:eq(i), unSymmetricEyes[{{}, {3}}]:eq(i)
+        local unSymIndices = l_eq_val + r_eq_val
+        unSymIndices = unSymIndices:reshape(unSymIndices:size(1))
+
+        assert(unSymIndices:eq(2):sum() == 0, 'Unsymmetric eyes not in dataset')
+
+        local indices = torch.linspace(1, unSymmetricEyes:size(1), unSymmetricEyes:size(1)):long()
+        print('i is ', i, unSymIndices:sum())
+
+        if resultSet == nil then
+            resultSet = unSymmetricEyes:index(1, indices[unSymIndices])
+        else
+            resultSet = torch.cat({resultSet, unSymmetricEyes:index(1, indices[unSymIndices])}, 1)
+        end
+
+        unSymIndices = unSymIndices:ne(1)
+        unSymmetricEyes = unSymmetricEyes:index(1, indices[unSymIndices])
+        print(unSymmetricEyes:size())
+        --]]--
+    end
+
+    return imageLabels
+end
+
+local function _processRawData(split, labelFile, headers, opt)
+
+    local imageLabels;
+    if paths.filep('imageLabels.t7') then
+        print('reading from t7 file');
+        imageLabels = torch.load('imageLabels.t7')
+    else
+        print('processing csv');
+        imageLabels = _readCSVToTensor(labelFile, headers, opt.data)
+    end
+
+    local data = {}
+    data.classDistribution = {}
+
+    for i = 0, 4 do
+        data.classDistribution[i] = imageLabels[{{}, {2}}]:eq(i):sum() + imageLabels[{{}, {3}}]:eq(i):sum()
+    end
+
+    imageLabels = _pruneData(imageLabels, data.classDistribution, opt.dataP)
+
     local indices = torch.linspace(1, imageLabels:size(1), imageLabels:size(1)):long()
     local classToImages = {}
     local dataSize = 0
@@ -148,7 +187,7 @@ function M.exec(opt, setName)
     assert(paths.dirp(opt.data), 'data folder is not valid'..opt.data)
     assert(paths.filep(labelFile), 'opt.'..setName..'L is not valid'..labelFile)
 
-    local dataSetInfo = _saveLabelFile(setName, labelFile, true, opt)
+    local dataSetInfo = _processRawData(setName, labelFile, true, opt)
 
     local dataSets = {}
 
