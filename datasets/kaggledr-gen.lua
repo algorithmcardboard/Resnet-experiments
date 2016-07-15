@@ -89,13 +89,81 @@ local function _readCSVToTensor(labelFile, headers, dataDir)
     return imageLabels
 end
 
-
-local function _pruneData(imageLabels, classDistribution, dataPercentage)
-
+local function _getUnsymmetricEyes(imageLabels)
     local indices = torch.linspace(1, imageLabels:size(1), imageLabels:size(1)):long()
     local unSymmetricEyes = imageLabels:index(1, indices[imageLabels[{{}, {2}}]:ne(imageLabels[{{}, {3}}])])
 
     assert(unSymmetricEyes[{{}, {2}}]:eq(unSymmetricEyes[{{}, {3}}]):sum() == 0, 'Not all unSymmetric eyes')
+
+    return unSymmetricEyes
+end
+
+local function _get_symmetric_eyes(imageLabels)
+    local indices = torch.linspace(1, imageLabels:size(1), imageLabels:size(1)):long()
+    local symmetricEyes = imageLabels:index(1, indices[imageLabels[{{}, {2}}]:eq(imageLabels[{{}, {3}}])])
+
+    assert(symmetricEyes[{{}, {2}}]:ne(symmetricEyes[{{}, {3}}]):sum() == 0, 'Not all Symmetric eyes')
+    return  symmetricEyes
+end
+
+local function _truncate(imageLabels, toTruncate, classDistribution, dataPercentage)
+
+    local unSymmetricEyes = _getUnsymmetricEyes(imageLabels)
+
+    for i, v in pairs(toTruncate) do
+        if v > 0 then
+            print('in toTruncate loop', v, math.ceil(classDistribution[i] * dataPercentage * 0.01))
+
+            local l_eq_val, r_eq_val = unSymmetricEyes[{{}, {2}}]:eq(i), unSymmetricEyes[{{}, {3}}]:eq(i)
+            local unSymIndices = (l_eq_val + r_eq_val):reshape(unSymmetricEyes:size(1))
+
+            print('total available in class '.. i .. ' ' .. unSymIndices:sum())
+            assert(unSymIndices:eq(2):sum() == 0, 'Unsymmetric eyes not in dataset')
+            assert(unSymIndices:sum() == (l_eq_val:sum() + r_eq_val:sum()), 'Some problem with unsymmetric eyes')
+
+            local indices = torch.linspace(1, unSymmetricEyes:size(1), unSymmetricEyes:size(1)):long()
+
+            local length = unSymIndices:sum()
+            indices = (indices[unSymIndices])[{{1, length - v}}]
+            unSymIndices:indexFill(1, indices, 0)
+
+            indices = torch.linspace(1, unSymmetricEyes:size(1), unSymmetricEyes:size(1)):long()
+            local discardedEncounters = unSymmetricEyes:index(1, indices[unSymIndices])
+
+            -- housekeeping
+            for dr_level = 0, 4 do 
+                if dr_level ~= i and toTruncate[dr_level] then
+                    local num_cases = discardedEncounters[{{},{2}}]:eq(dr_level):sum() + discardedEncounters[{{},{3}}]:eq(dr_level):sum()
+                    toTruncate[dr_level] = toTruncate[dr_level] - num_cases
+                end
+            end
+
+            unSymIndices = unSymIndices:ne(1)
+
+            assert(unSymIndices:size(1) == unSymmetricEyes:size(1), 'unequal sizes')
+
+            indices = torch.linspace(1, unSymmetricEyes:size(1), unSymmetricEyes:size(1)):long()
+            unSymmetricEyes = unSymmetricEyes:index(1, indices[unSymIndices])
+
+            print('unSymmetricEyes size is ')
+            print(unSymmetricEyes:size())
+        end
+    end
+
+    local requiredSize = math.ceil(imageLabels:size(1) * dataPercentage * 0.01) - unSymmetricEyes:size(1)
+    local symmetricEyes = _get_symmetric_eyes(imageLabels)
+    local perm = torch.randperm(symmetricEyes:size(1)):long()
+
+    symmetricEyes = symmetricEyes:index(1, perm)
+    symmetricEyes = symmetricEyes[{{1, requiredSize}}]
+
+    imageLabels = torch.cat(unSymmetricEyes, symmetricEyes, 1)
+    return imageLabels
+end
+
+local function _pruneData(imageLabels, classDistribution, dataPercentage)
+
+    local unSymmetricEyes = _getUnsymmetricEyes(imageLabels)
 
     local toTruncate = {};
 
@@ -114,41 +182,23 @@ local function _pruneData(imageLabels, classDistribution, dataPercentage)
 
     print('toTruncate is ', toTruncate)
 
-    for i, v in pairs(toTruncate) do
-        print('in toTruncate loop', v, math.ceil(classDistribution[i] * dataPercentage * 0.01))
-        if v > 0 then
-            print('Truncating for class ', i)
-
-            local l_eq_val, r_eq_val = unSymmetricEyes[{{}, {2}}]:eq(i), unSymmetricEyes[{{}, {3}}]:eq(i)
-            local unSymIndices = (l_eq_val + r_eq_val):reshape(unSymmetricEyes:size(1))
-
-            print('total available in class '.. i .. ' ' .. unSymIndices:sum())
-            assert(unSymIndices:eq(2):sum() == 0, 'Unsymmetric eyes not in dataset')
-            assert(unSymIndices:sum() == (l_eq_val:sum() + r_eq_val:sum()), 'Some problem with unsymmetric eyes')
-
-            local indices = torch.linspace(1, unSymmetricEyes:size(1), unSymmetricEyes:size(1)):long()
-
-            local length = unSymIndices:sum()
-            indices = (indices[unSymIndices])[{{1, length - v}}]
-
-            print('before sum is ', unSymIndices:sum())
-            unSymIndices:indexFill(1, indices, 0)
-            print('after sum is ', unSymIndices:sum())
-
-            unSymIndices = unSymIndices:ne(1)
-            print(unSymIndices:sum(), unSymmetricEyes:size(1), unSymIndices:size(1))
-
-            assert(unSymIndices:size(1) == unSymmetricEyes:size(1), 'unequal sizes')
-
-
-            indices = torch.linspace(1, unSymmetricEyes:size(1), unSymmetricEyes:size(1)):long()
-            unSymmetricEyes = unSymmetricEyes:index(1, indices[unSymIndices])
-            print('unSymmetricEyes size is ')
-            print(unSymmetricEyes:size())
-        end
-    end
-
+    imageLabels = _truncate(imageLabels, toTruncate, classDistribution, dataPercentage)
     return imageLabels
+end
+
+local function _train_validation_split(imageLabels, valPercentage)
+    local dataSize, valSize = imageLabels:size(1), math.ceil(imageLabels:size(1) * valPercentage * 0.01)
+    local shuffle = torch.randperm(dataSize):long()
+
+    imageLabels = imageLabels:index(1, shuffle)
+
+    return imageLabels[{{1, dataSize - valSize}}], imageLabels[{{dataSize - valSize + 1, dataSize}}]
+end
+
+local function _flatten(imageLabels)
+    local left_dr = imageLabels:index(2, torch.LongTensor({1, 2}))
+    local right_dr = imageLabels:index(2, torch.LongTensor({1, 3}))
+    return torch.cat(left_dr, right_dr, 1)
 end
 
 local function _processRawData(split, labelFile, headers, opt)
@@ -170,33 +220,22 @@ local function _processRawData(split, labelFile, headers, opt)
     end
 
     imageLabels = _pruneData(imageLabels, data.classDistribution, opt.dataP)
+    local length = imageLabels:size(1)
+    local shuffle = torch.randperm(length):long()
 
-    local indices = torch.linspace(1, imageLabels:size(1), imageLabels:size(1)):long()
-    local classToImages = {}
-    local dataSize = 0
+    imageLabels = imageLabels:index(1, shuffle)
+
     local info = {}
-
-    for i = 0,4 do
-        local selected = indices[imageLabels[{{}, {3}}]:eq(i)]
-        classToImages[i] = imageLabels:index(1,selected)
-    end
-
-    if opt.dataP > 0 and opt.dataP <= 100 and opt.dataP%1 == 0 then
-        classToImages, dataSize = _pruneData(classToImages, opt.dataP)
-    end
-
     if split=="train" and opt.val > 0 and opt.val < 100 and opt.val % 1 == 0 then
-        classToImages, dataSize, validationImages, valSize = _train_validation_split(classToImages, opt.val)
+        imageLabels, valLabels  = _train_validation_split(imageLabels, opt.val)
         info['val'] = {}
-        info.val['classToImages'] = validationImages 
-        info.val['size'] = valSize
-        info.val['data'] = flatten(validationImages, valSize)
+        info.val['size'] = valLabels:size(1)
+        info.val['data'] = _flatten(valLabels)
     end
 
     info[split] = {}
-    info[split]['classToImages'] = classToImages
-    info[split]['size'] = dataSize
-    info[split]['data'] = flatten(classToImages, dataSize)
+    info[split]['size'] = imageLabels:size(1)
+    info[split]['data'] = _flatten(imageLabels)
 
     local fileName = table.concat({"processed", split, opt.dataP, opt.val, "t7"}, '.');
     torch.save(fileName, info)
