@@ -43,16 +43,19 @@ function M.DataLoader:__init(data, opt)
     self.batchSize = opt.batchSize
 end
 
-function M.DataLoader:run()
+function M.DataLoader:run(epoch)
     local pool = self.pool
     local size, batchSize = self.__size, self.batchSize
-    local perm = torch.randperm(size)
+    print('batchSize is ', batchSize, ' self.__size is ', size)
+    -- local perm = torch.randperm(size)
+    local perm = self.dataSet:get_image_indicies(epoch)
 
     local idx, sample = 1, nil
 
     local function enqueue()
         while idx <= size and pool:acceptsjob() do
             local indices = perm:narrow(1, idx, math.min(batchSize, size - idx + 1))
+            -- print('max of indices is ', indices:max(), 'min is ', indices:min(), indices:size(1), self.dataSet:size())
             pool:addjob(
                 function(indices)
                     local sz = indices:size(1)

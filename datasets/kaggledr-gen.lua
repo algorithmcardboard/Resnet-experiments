@@ -112,12 +112,12 @@ local function _truncate(imageLabels, toTruncate, classDistribution, dataPercent
 
     for i, v in pairs(toTruncate) do
         if v > 0 then
-            print('in toTruncate loop', v, math.ceil(classDistribution[i] * dataPercentage * 0.01))
+            -- print('in toTruncate loop', v, math.ceil(classDistribution[i] * dataPercentage * 0.01))
 
             local l_eq_val, r_eq_val = unSymmetricEyes[{{}, {2}}]:eq(i), unSymmetricEyes[{{}, {3}}]:eq(i)
             local unSymIndices = (l_eq_val + r_eq_val):reshape(unSymmetricEyes:size(1))
 
-            print('total available in class '.. i .. ' ' .. unSymIndices:sum())
+            -- print('total available in class '.. i .. ' ' .. unSymIndices:sum())
             assert(unSymIndices:eq(2):sum() == 0, 'Unsymmetric eyes not in dataset')
             assert(unSymIndices:sum() == (l_eq_val:sum() + r_eq_val:sum()), 'Some problem with unsymmetric eyes')
 
@@ -145,8 +145,8 @@ local function _truncate(imageLabels, toTruncate, classDistribution, dataPercent
             indices = torch.linspace(1, unSymmetricEyes:size(1), unSymmetricEyes:size(1)):long()
             unSymmetricEyes = unSymmetricEyes:index(1, indices[unSymIndices])
 
-            print('unSymmetricEyes size is ')
-            print(unSymmetricEyes:size())
+            -- print('unSymmetricEyes size is ')
+            -- print(unSymmetricEyes:size())
         end
     end
 
@@ -213,21 +213,21 @@ local function _processRawData(split, labelFile, headers, opt)
 
     local imageLabels;
     if paths.filep('imageLabels.t7') then
-        print('reading from t7 file');
+        print('Reading from t7 file');
         imageLabels = torch.load('imageLabels.t7')
     else
-        print('processing csv');
+        print('Processing csv');
         imageLabels = _readCSVToTensor(labelFile, headers, opt.data)
     end
 
-    local data = {}
-    data.classDistribution = {}
+    local classDistribution, distribution = {}, {}
 
     for i = 0, 4 do
-        data.classDistribution[i] = imageLabels[{{}, {2}}]:eq(i):sum() + imageLabels[{{}, {3}}]:eq(i):sum()
+        table.insert(distribution, imageLabels[{{}, {2}}]:eq(i):sum() + imageLabels[{{}, {3}}]:eq(i):sum())
+        classDistribution[i] = distribution[i+1]
     end
 
-    imageLabels = _pruneData(imageLabels, data.classDistribution, opt.dataP)
+    imageLabels = _pruneData(imageLabels, classDistribution, opt.dataP)
     local length = imageLabels:size(1)
     local shuffle = torch.randperm(length):long()
 
@@ -236,14 +236,19 @@ local function _processRawData(split, labelFile, headers, opt)
     local info = {}
     if split=="train" and opt.val > 0 and opt.val < 100 and opt.val % 1 == 0 then
         imageLabels, valLabels  = _train_validation_split(imageLabels, opt.val)
+        valLabels = _flatten(valLabels)
         info['val'] = {}
         info.val['size'] = valLabels:size(1)
-        info.val['data'] = _flatten(valLabels)
+        info.val['data'] = valLabels
     end
 
+    imageLabels = _flatten(imageLabels)
     info[split] = {}
     info[split]['size'] = imageLabels:size(1)
-    info[split]['data'] = _flatten(imageLabels)
+    info[split]['data'] = imageLabels
+    if(split == 'train') then
+        info[split]['classDistribution'] = torch.Tensor(distribution)
+    end
 
     local fileName = table.concat({"processed", split, opt.dataP, opt.val, "t7"}, '.');
     torch.save(fileName, info)

@@ -35,7 +35,7 @@ function Trainer:train(epoch, dataLoader)
     print('=> Training epoch #'.. epoch)
 
     self.model:training()
-    for n, sample in dataLoader:run() do
+    for n, sample in dataLoader:run(epoch) do
 
         local dataTime = dataTimer:time().real
 
@@ -57,7 +57,7 @@ function Trainer:train(epoch, dataLoader)
 
         N = N + 1
 
-        assert(self.params:storage() == self.model:parameters()[1]:storage())
+        assert(self.params:storage() == self.model:parameters()[1]:storage(), 'Storage changed')
 
         timer:reset()
         dataTimer:reset()
@@ -70,13 +70,13 @@ function Trainer:validate(epoch, dataLoader)
 
     local timer = torch.Timer()
     local dataTimer = torch.Timer()
-    local size = dataLoader:size()
+    local valSize = dataLoader:size()
 
     local N = 0
     local mean_sq_sum, loss_sum = 0.0, 0.0
 
     self.model:evaluate()
-    for n, sample in dataLoader:run() do
+    for n, sample in dataLoader:run(epoch) do
         local dataTime = dataTimer:time().real
         self:copyInputs(sample)
 
@@ -89,6 +89,7 @@ function Trainer:validate(epoch, dataLoader)
         loss_sum = loss_sum + loss
 
         N = N+1
+        xlua.progress(n, valSize)
     end
     return loss_sum/N, mean_sq_sum/N
 end

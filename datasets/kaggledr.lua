@@ -10,7 +10,14 @@ function KaggleDR:__init(opt, split, info)
     self.split = split
     self.dir = opt.data
     self.info = info
+    if split == 'train' then
+        self.classDistribution = info.classDistribution
+    end
     self.__size = info.size
+    self.R = 0.975
+
+    self.initialWeights = torch.Tensor({1.36, 14.4, 6.64, 40.2, 49.6})
+    self.finalWeights = torch.Tensor({1, 2, 2, 2, 2})
 end
 
 function KaggleDR:get(id)
@@ -30,6 +37,25 @@ end
 
 function KaggleDR:size()
     return self.__size
+end
+
+function KaggleDR:get_image_indicies(epoch)
+    if self.split ~= 'train' then
+        print('returning non train permutation "'.. self.split .. '"')
+        return torch.randperm(self.__size)
+    end
+
+    -- do this only for training set
+
+    local weights = self.R^(epoch -1) * self.initialWeights + (1 - self.R^(epoch - 1)) * self.finalWeights
+    weights = torch.cmul(weights, self.classDistribution)
+    print(weights)
+
+    dr_levels = torch.multinomial(weights, self.__size, true)
+
+    for i = 1, 5 do print(dr_levels:eq(i):sum()) end
+
+    return torch.randperm(self.__size)
 end
 
 function KaggleDR:preprocess(img)
