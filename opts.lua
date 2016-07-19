@@ -20,6 +20,7 @@ function M.parse(arg)
     cmd:option('-momentum',         0.9,            'momentum')
     cmd:option('-weightDecay',      1e-4,           'weight decay')
     cmd:option('-logDir',           'logs',         'log directory')
+    cmd:option('-name',             '',             'name of the current training run')
 
     local opt = cmd:parse(arg or {})
 

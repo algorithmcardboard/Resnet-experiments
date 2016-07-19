@@ -15,7 +15,7 @@ local dateT = os.date('*t')
 
 local dateStr = dateT.year .. dateT.month .. dateT.day .. '_' .. dateT.hour .. dateT.min .. dateT.sec
 
-local logger = optim.Logger(opt.logDir .. '/resnet_' .. dateStr .. '.log')
+local logger = optim.Logger(opt.logDir .. '/resnet_' .. dateStr .. '.log' .. (opt.name and '.' .. opt.name or ''))
 logger:setNames{'train_loss', 'train_mse', 'val_loss', 'val_mse'}
 logger:style{'+-', '+-', '+-', '+-'}
 
