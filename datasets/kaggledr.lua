@@ -53,9 +53,10 @@ function KaggleDR:size()
 end
 
 function KaggleDR:get_image_indicies(epoch)
+    local perm = torch.randperm(self.__size):long()
     if self.split ~= 'train' then
-        print('returning non train permutation "'.. self.split .. '"')
-        return torch.randperm(self.__size)
+        -- print('returning non train permutation "'.. self.split .. '"')
+        return perm
     end
 
     -- do this only for training set
@@ -64,27 +65,25 @@ function KaggleDR:get_image_indicies(epoch)
     weights = torch.cmul(weights, self.classDistribution)
 
     dr_levels = torch.histc(torch.multinomial(weights, self.__size, true):double(), 5, 1, 5):totable()
-    print(dr_levels)
+    -- print(dr_levels)
     local indices
     for level, count in pairs(dr_levels) do
         local curIndices = self.classIndices[level -1]
         local shuffle = torch.randperm(curIndices:size(1)):long()
         curIndices = curIndices:index(1, shuffle)
         local mul_factor = math.ceil(count/curIndices:size(1))
-        print('mul_factor is ', mul_factor)
-
-        
+        -- print('mul_factor is ', mul_factor)
 
         if not indices then
             indices = curIndices:repeatTensor(mul_factor)[{{1,count}}]
-            print('current indices size is ', indices:size())
+            -- print('current indices size is ', indices:size())
         else
             indices = torch.cat(indices, curIndices:repeatTensor(mul_factor)[{{1,count}}], 1)
         end
     end
-    print('final indices size is ', indices:size())
+    -- print('final indices size is ', indices:size())
 
-    return indices
+    return indices:index(1, perm)
 end
 
 function KaggleDR:preprocess(img)

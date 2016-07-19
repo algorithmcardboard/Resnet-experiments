@@ -17,6 +17,7 @@ local dateStr = dateT.year .. dateT.month .. dateT.day .. '_' .. dateT.hour .. d
 
 local logger = optim.Logger(opt.logDir .. '/resnet_' .. dateStr .. '.log')
 logger:setNames{'train_loss', 'train_mse', 'val_loss', 'val_mse'}
+logger:style{'+-', '+-', '+-', '+-'}
 
 local statsLogger = optim.Logger(opt.logDir ..'/stats.log')
 statsLogger:setNames{'CPU_MEMORY', 'CPU1_TEMPERATURE', 'CPU2_TEMPERATURE', 'CPU3_TEMPERATURE', 'CPU4_TEMPERATURE', 'GPU_TEMPERATURE', 'GPU_MEMORY', 'GPU_UTILIZATION'}

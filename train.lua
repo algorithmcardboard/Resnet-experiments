@@ -42,7 +42,15 @@ function Trainer:train(epoch, dataLoader)
         self:copyInputs(sample)
 
         local output = self.model:forward(self.input):float()
-        local loss = self.criterion:forward(self.model.output, self.target)
+        local loss = self.criterion:forward(self.model.output, (self.target + 1))
+
+        -- print(output)
+
+        --[[--[
+        for i = 0, 5 do 
+            print(i, output:eq(i):sum(), self.target:eq(i):sum())
+        end
+        --]]--]
 
         self.model:zeroGradParameters()
         self.criterion:backward(self.model.output, self.target)
@@ -50,7 +58,7 @@ function Trainer:train(epoch, dataLoader)
 
         optim.sgd(feval, self.params, self.optimState)
 
-        local mean_sq_err = self:computeScore(output, sample.target)
+        local mean_sq_err = self:computeScore(output, (sample.target + 1))
 
         mean_sq_sum = mean_sq_sum + mean_sq_err
         loss_sum = loss_sum + loss
