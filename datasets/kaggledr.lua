@@ -20,6 +20,7 @@ function KaggleDR:__init(opt, split, info)
     self.R = 0.975
 
     self.initialWeights = torch.Tensor({1.36, 14.4, 6.64, 40.2, 49.6})
+    -- self.finalWeights = torch.Tensor({1.36, 14.4, 6.64, 40.2, 49.6})
     self.finalWeights = torch.Tensor({1, 2, 2, 2, 2})
 
     self.indices = torch.linspace(1, self.data:size(1), self.data:size(1))

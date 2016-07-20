@@ -45,3 +45,5 @@ luac.out
 data/*
 
 logs/
+
+*.ipynb_checkpoints*
