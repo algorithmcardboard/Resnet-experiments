@@ -46,7 +46,7 @@ end
 function M.DataLoader:run(epoch)
     local pool = self.pool
     local size, batchSize = self.__size, self.batchSize
-    print('batchSize is ', batchSize, ' self.__size is ', size)
+    -- print('batchSize is ', batchSize, ' self.__size is ', size)
     -- local perm = torch.randperm(size)
     local perm = self.dataSet:get_image_indicies(epoch)
 
