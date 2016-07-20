@@ -10,7 +10,7 @@ function M.setup(opt)
     cudnn.fastest = true
     cudnn.benchmark = true
 
-    local criterion = nn.CrossEntropyCriterion():cuda()
+    local criterion = nn.MSECriterion():cuda()
 
     return model, criterion
 end

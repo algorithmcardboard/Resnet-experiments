@@ -16,7 +16,8 @@ local dateT = os.date('*t')
 local dateStr = dateT.year .. dateT.month .. dateT.day .. '_' .. dateT.hour .. dateT.min .. dateT.sec
 
 local logger = optim.Logger(opt.logDir .. '/resnet_' .. dateStr .. '.log' .. (opt.name and '.' .. opt.name or ''))
-logger:setNames{'train_loss', 'train_mse', 'val_loss', 'val_mse'}
+-- logger:setNames{'train_loss', 'train_mse', 'val_loss', 'val_mse'}
+logger:setNames{'train_mse', 'val_mse'}
 logger:style{'+-', '+-', '+-', '+-'}
 
 local statsLogger = optim.Logger(opt.logDir ..'/stats.log')
@@ -84,7 +85,7 @@ for epoch = 1, opt.nEpochs do
     -- code to sum/do operations with previous valStastistics and vs
     logHardwareStatistics()
 
-    logger:add{train_loss, train_mse, val_loss, val_mse}
+    logger:add{train_loss, val_loss}
     logger:plot()
 end
 

@@ -42,7 +42,11 @@ function Trainer:train(epoch, dataLoader)
         self:copyInputs(sample)
 
         local output = self.model:forward(self.input):float()
-        local loss = self.criterion:forward(self.model.output, (self.target + 1))
+        local _, predictions = output:float():sort(2, true)
+        predictions = predictions:narrow(2,1,1):double():cuda()
+        -- print(predictions)
+        -- print(self.target)
+        local loss = self.criterion:forward(predictions, (self.target + 1))
 
         -- print(output)
 
@@ -53,14 +57,14 @@ function Trainer:train(epoch, dataLoader)
         --]]--]
 
         self.model:zeroGradParameters()
-        self.criterion:backward(self.model.output, self.target)
+        self.criterion:backward(predictions, self.target)
         self.model:backward(self.input, self.criterion.gradInput)
 
         optim.sgd(feval, self.params, self.optimState)
 
-        local mean_sq_err = self:computeScore(output, (sample.target + 1))
+        -- local mean_sq_err = self:computeScore(output, (sample.target + 1))
 
-        mean_sq_sum = mean_sq_sum + mean_sq_err
+        -- mean_sq_sum = mean_sq_sum + mean_sq_err
         loss_sum = loss_sum + loss
 
         N = N + 1
@@ -71,7 +75,7 @@ function Trainer:train(epoch, dataLoader)
         dataTimer:reset()
         xlua.progress(n, trainSize)
     end
-    return loss_sum/N, mean_sq_sum/N
+    return loss_sum/N -- , mean_sq_sum/N
 end
 
 function Trainer:validate(epoch, dataLoader)
@@ -89,17 +93,20 @@ function Trainer:validate(epoch, dataLoader)
         self:copyInputs(sample)
 
         local output = self.model:forward(self.input):float()
-        local loss = self.criterion:forward(self.model.output, self.target)
-        
-        local mean_sq_err = self:computeScore(output, sample.target)
+        local _, predictions = output:float():sort(2, true)
+        predictions = predictions:narrow(2,1,1):double():cuda()
 
-        mean_sq_sum = mean_sq_sum + mean_sq_err
+        local loss = self.criterion:forward(predictions, self.target)
+        
+        -- local mean_sq_err = self:computeScore(output, sample.target)
+
+        -- mean_sq_sum = mean_sq_sum + mean_sq_err
         loss_sum = loss_sum + loss
 
         N = N+1
         xlua.progress(n, valSize)
     end
-    return loss_sum/N, mean_sq_sum/N
+    return loss_sum/N -- , mean_sq_sum/N
 end
 
 function Trainer:computeScore(output, target)

@@ -108,6 +108,7 @@ local function createModel(opt)
     model:add(Avg(7, 7, 1, 1))
     model:add(nn.View(nFeatures):setNumInputDims(3))
     model:add(nn.Linear(nFeatures, 5))
+    model:add(nn.SoftMax())
 
 
     local function ConvInit(name)
