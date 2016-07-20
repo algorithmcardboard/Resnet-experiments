@@ -3,13 +3,13 @@ require 'cutorch';
 require 'optim';
 require 'os';
 
--- torch.setdefaulttensortype('torch.FloatTensor')
-torch.setnumthreads(1)
-torch.manualSeed(0)
-cutorch.manualSeedAll(0)
-
 local opts = require 'opts'
 local opt = opts.parse(arg)
+
+-- torch.setdefaulttensortype('torch.FloatTensor')
+torch.setnumthreads(1)
+torch.manualSeed(opt.manualSeed)
+cutorch.manualSeedAll(opt.manualSeed)
 
 local dateT = os.date('*t')
 

@@ -17,7 +17,7 @@ function KaggleDR:__init(opt, split, info)
         self.classDistribution = info.classDistribution
     end
     self.__size = info.size
-    self.R = 0.975
+    self.R = 0.9975
 
     self.initialWeights = torch.Tensor({1.36, 14.4, 6.64, 40.2, 49.6})
     -- self.finalWeights = torch.Tensor({1.36, 14.4, 6.64, 40.2, 49.6})
