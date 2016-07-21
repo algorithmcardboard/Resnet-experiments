@@ -16,6 +16,7 @@ function Trainer:__init(model, criterion, opt, optimState)
     }
     self.opt = opt
     self.params, self.gradParams = model:getParameters()
+    self.confusion = optim.ConfusionMatrix({1,2,3,4,5})
 end
 
 function Trainer:train(epoch, dataLoader)
@@ -24,7 +25,7 @@ function Trainer:train(epoch, dataLoader)
     local timer = torch.Timer()
     local dataTimer = torch.Timer()
     local N = 0
-    local mean_sq_sum, loss_sum = 0.0, 0.0
+    local kappa_sum, loss_sum = 0.0, 0.0
 
     local function feval()
         return self.criterion.output, self.gradParams
@@ -44,17 +45,7 @@ function Trainer:train(epoch, dataLoader)
         local output = self.model:forward(self.input):float()
         local _, predictions = output:float():sort(2, true)
         predictions = predictions:narrow(2,1,1):double():cuda()
-        -- print(predictions)
-        -- print(self.target)
         local loss = self.criterion:forward(predictions, (self.target + 1))
-
-        -- print(output)
-
-        --[[--[
-        for i = 0, 5 do 
-            print(i, output:eq(i):sum(), self.target:eq(i):sum())
-        end
-        --]]--]
 
         self.model:zeroGradParameters()
         self.criterion:backward(predictions, self.target)
@@ -62,10 +53,8 @@ function Trainer:train(epoch, dataLoader)
 
         optim.sgd(feval, self.params, self.optimState)
 
-        -- local mean_sq_err = self:computeScore(output, (sample.target + 1))
-
-        -- mean_sq_sum = mean_sq_sum + mean_sq_err
         loss_sum = loss_sum + loss
+        kappa_sum = kappa_sum + self:computeKappa(predictions, self.target)
 
         N = N + 1
 
@@ -75,7 +64,7 @@ function Trainer:train(epoch, dataLoader)
         dataTimer:reset()
         xlua.progress(n, trainSize)
     end
-    return loss_sum/N -- , mean_sq_sum/N
+    return loss_sum/N, kappa_sum/N
 end
 
 function Trainer:validate(epoch, dataLoader)
@@ -85,7 +74,7 @@ function Trainer:validate(epoch, dataLoader)
     local valSize = dataLoader:size()
 
     local N = 0
-    local mean_sq_sum, loss_sum = 0.0, 0.0
+    local kappa_sum, loss_sum = 0.0, 0.0
 
     self.model:evaluate()
     for n, sample in dataLoader:run(epoch) do
@@ -98,27 +87,34 @@ function Trainer:validate(epoch, dataLoader)
 
         local loss = self.criterion:forward(predictions, self.target)
         
-        -- local mean_sq_err = self:computeScore(output, sample.target)
-
-        -- mean_sq_sum = mean_sq_sum + mean_sq_err
         loss_sum = loss_sum + loss
+        kappa_sum = kappa_sum + self:computeKappa(predictions, self.target)
 
         N = N+1
         xlua.progress(n, valSize)
     end
-    return loss_sum/N -- , mean_sq_sum/N
+    return loss_sum/N, kappa_sum/N
 end
 
-function Trainer:computeScore(output, target)
-    -- print(output)
-    local batchSize = output:size(1)
-    local _, predictions = output:float():sort(2, true)
+function Trainer:computeKappa(predictions, target)
+    local confusion = self.confusion
+    confusion:zero()
 
-    -- local correct = predictions:eq(target:add(1):long():view(batchSize, 1):expandAs(output))
-
-    local mean_square  = torch.pow((predictions:narrow(2,1,1):double() - target:view(batchSize, 1):double()), 2):sum()
-
-    return mean_square / batchSize
+    confusion:batchAdd(predictions, target)
+    --confusion:batchAdd(target, target)
+    local mat = confusion.mat:double()
+    local N = mat:size(1)
+    local tmp = torch.range(1, N):view(1, N)
+    local tmp1 = torch.range(1, N):view(N, 1)
+    local W= tmp:expandAs(mat)-tmp1:expandAs(mat)
+    W:cmul(W)
+    W:div((N-1)*(N-1))
+    local total = mat:sum()
+    local row_sum = mat:sum(1)/total
+    local col_sum = mat:sum(2)
+    local E = torch.cmul(row_sum:expandAs(mat), col_sum:expandAs(mat)):double()
+    local kappa = 1 - torch.cmul(W, mat):sum()/ torch.cmul(W, E):sum()
+    return kappa
 end
 
 function Trainer:learningRate(epoch)

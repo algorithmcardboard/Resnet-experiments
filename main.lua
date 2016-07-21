@@ -77,10 +77,10 @@ local function logHardwareStatistics()
 end
 
 for epoch = 1, opt.nEpochs do
-    local train_loss, train_mse = trainer:train(epoch, trainLoader)
-    local val_loss, val_mse = trainer:validate(epoch, valLoader)
+    local train_loss, train_kappa = trainer:train(epoch, trainLoader)
+    local val_loss, val_kappa = trainer:validate(epoch, valLoader)
 
-    print("Scores are ", train_loss, train_mse, val_loss, val_mse);
+    print("Scores are ", train_loss, train_kappa, val_loss, val_kappa);
 
     -- code to sum/do operations with previous valStastistics and vs
     logHardwareStatistics()
