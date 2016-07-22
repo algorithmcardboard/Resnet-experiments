@@ -54,7 +54,7 @@ function Trainer:train(epoch, dataLoader)
         optim.sgd(feval, self.params, self.optimState)
 
         loss_sum = loss_sum + loss
-        kappa_sum = kappa_sum + self:computeKappa(predictions, self.target)
+        kappa_sum = kappa_sum + self:computeKappa(predictions, (self.target + 1))
 
         N = N + 1
 
@@ -88,7 +88,7 @@ function Trainer:validate(epoch, dataLoader)
         local loss = self.criterion:forward(predictions, self.target)
         
         loss_sum = loss_sum + loss
-        kappa_sum = kappa_sum + self:computeKappa(predictions, self.target)
+        kappa_sum = kappa_sum + self:computeKappa(predictions, (self.target + 1))
 
         N = N+1
         xlua.progress(n, valSize)
@@ -100,6 +100,8 @@ function Trainer:computeKappa(predictions, target)
     local confusion = self.confusion
     confusion:zero()
 
+    -- print('predictions ', predictions)
+    -- print('target ', target)
     confusion:batchAdd(predictions, target)
     --confusion:batchAdd(target, target)
     local mat = confusion.mat:double()

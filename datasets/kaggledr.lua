@@ -34,6 +34,12 @@ function KaggleDR:__init(opt, split, info)
     print('classIndices are ', split, self.classIndices, self.data:size())
 end
 
+function KaggleDR:get_row(id)
+    local data = self.info.data
+
+    return table.unpack(data[id]:totable())
+end
+
 function KaggleDR:get(id)
     local data = self.info.data
     -- print('fetching ', id, 'data is ', data:size())
@@ -55,7 +61,8 @@ end
 
 function KaggleDR:get_image_indicies(epoch)
     local perm = torch.randperm(self.__size):long()
-    if self.split ~= 'train' then
+    -- if self.split ~= 'train' then
+    if self.split ~= 'test' then
         -- print('returning non train permutation "'.. self.split .. '"')
         return perm
     end
