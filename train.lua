@@ -71,10 +71,14 @@ function Trainer:validate(epoch, dataLoader)
 
     local timer = torch.Timer()
     local dataTimer = torch.Timer()
-    local valSize = dataLoader:size()
-
     local N = 0
     local kappa_sum, loss_sum = 0.0, 0.0
+
+    if not dataLoader then
+        return loss_sum, kappa_sum
+    end
+    local valSize = dataLoader:size()
+
 
     self.model:evaluate()
     for n, sample in dataLoader:run(epoch) do

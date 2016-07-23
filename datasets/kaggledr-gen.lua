@@ -199,10 +199,10 @@ local function _flatten(imageLabels)
     local left_dr = imageLabels:index(2, torch.LongTensor({1, 2}))
     local right_dr = imageLabels:index(2, torch.LongTensor({1, 3}))
 
-    right_dr = torch.cat(right_dr, torch.ones(right_dr:size(1)):reshape(right_dr:size(1), 1), 2)
+    right_dr = torch.cat(right_dr, torch.randn(right_dr:size(1)):fill(2):reshape(right_dr:size(1), 1), 2)
     right_dr = right_dr:index(2, torch.LongTensor({1,3,2}))
 
-    left_dr = torch.cat(left_dr, torch.zeros(left_dr:size(1)):reshape(left_dr:size(1), 1), 2)
+    left_dr = torch.cat(left_dr, torch.ones(left_dr:size(1)):reshape(left_dr:size(1), 1), 2)
     left_dr = left_dr:index(2, torch.LongTensor({1,3,2}))
 
 
@@ -234,6 +234,8 @@ local function _processRawData(split, labelFile, headers, opt)
     imageLabels = imageLabels:index(1, shuffle)
 
     local info = {}
+    info[split] = {}
+
     if split=="train" and opt.val > 0 and opt.val < 100 and opt.val % 1 == 0 then
         imageLabels, valLabels  = _train_validation_split(imageLabels, opt.val)
         valLabels = _flatten(valLabels)
@@ -243,7 +245,6 @@ local function _processRawData(split, labelFile, headers, opt)
     end
 
     imageLabels = _flatten(imageLabels)
-    info[split] = {}
     info[split]['size'] = imageLabels:size(1)
     info[split]['data'] = imageLabels
     if(split == 'train') then

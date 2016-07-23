@@ -1,3 +1,4 @@
+require 'os'
 local image = require 'image';
 local t = require 'datasets/transforms'
 
@@ -6,6 +7,18 @@ local M = {}
 local KaggleDR = torch.class('eyeart.KaggleDR', M)
 
 local DR_LEVELS = {0, 1, 2, 3, 4}
+
+local labelFile = torch.DiskFile('trainLabels.csv', 'w')
+local saveFileCount = 0
+
+local function saveFile(encounter_id, pos_id, dr_level, dir)
+    local encounter = encounter_id .. '_' .. (pos_id == 1 and 'left' or 'right') 
+    local fileName = dir .. encounter .. '.jpg'
+
+    labelFile:writeString(encounter .. ','.. dr_level .. '\n')
+
+    saveFileCount = saveFileCount + 1
+end
 
 
 function KaggleDR:__init(opt, split, info)
@@ -34,21 +47,22 @@ function KaggleDR:__init(opt, split, info)
     print('classIndices are ', split, self.classIndices, self.data:size())
 end
 
-function KaggleDR:get_row(id)
-    local data = self.info.data
-
-    return table.unpack(data[id]:totable())
-end
-
 function KaggleDR:get(id)
+    -- print(id)
     local data = self.info.data
     -- print('fetching ', id, 'data is ', data:size())
 
     local encounter_id, pos_id, dr_level = table.unpack(data[id]:totable())
-    local fileName = self.dir .. encounter_id .. '_' .. (pos_id == 1 and 'left' or 'right') .. '.jpg'
+    -- saveFile(encounter_id, pos_id, dr_level, self.dir)
+
+    local encounter = encounter_id .. '_' .. (pos_id == 1 and 'left' or 'right') 
+    local fileName = self.dir .. encounter .. '.jpg'
+
     -- print(id, encounter_id, pos_id, dr_level, fileName)
 
     img = image.load(fileName, 3, 'float')
+
+    -- image.save('processed/'.. encounter .. '.jpg', img)
     return {
         input = img,
         target = dr_level
@@ -61,6 +75,7 @@ end
 
 function KaggleDR:get_image_indicies(epoch)
     local perm = torch.randperm(self.__size):long()
+    -- print('perm size is ', perm:size())
     -- if self.split ~= 'train' then
     if self.split ~= 'test' then
         -- print('returning non train permutation "'.. self.split .. '"')

@@ -30,7 +30,7 @@ local Trainer = require 'train'
 
 local model, criterion = models.setup(opt)
 
-local valLoader, trainLoader = DataLoader.create(opt, {'train'})
+local trainLoader, valLoader= DataLoader.create(opt, {'train'})
 
 print('trainLoader ', trainLoader)
 print('valLoader ', valLoader)
